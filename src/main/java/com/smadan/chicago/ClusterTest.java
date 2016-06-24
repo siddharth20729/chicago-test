@@ -14,12 +14,14 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.List;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 /**
  * Created by smadan on 6/20/16.
  */
 
 public class ClusterTest {
-
     TestChicagoCluster testChicagoCluster;
    HashMap<String,String> servers = new HashMap<>();
 
@@ -54,10 +56,7 @@ public class ClusterTest {
         for (int i = 0; i < 30; i++) {
             String _v = "val" + i;
             byte[] val = _v.getBytes();
-            int valO = Ints.fromByteArray(testChicagoCluster.chicagoTSClient.write(tsKey.getBytes(), val));
-            if(valO != i ){
-                throw new Exception("Value does not match");
-            }
+            assertEquals(i,Ints.fromByteArray(testChicagoCluster.chicagoTSClient.write(tsKey.getBytes(), val)));
         }
         assertTSClient(tsKey,29,"val29");
 
@@ -65,10 +64,7 @@ public class ClusterTest {
         int key  = 29;
         String val  = "value29";
         //write
-        int v = Ints.fromByteArray(testChicagoCluster.chicagoTSClient._write(tsKey.getBytes(),Ints.toByteArray(key), val.getBytes()).get());
-        if(v != 29){
-            throw new Exception("Atomic integer is out of sync.");
-        }
+        assertEquals(23,Ints.fromByteArray(testChicagoCluster.chicagoTSClient._write(tsKey.getBytes(),Ints.toByteArray(key), val.getBytes()).get()));
         //Assert no overwrite took place
         assertTSClient(tsKey,key,"val29");
         //deleteColFam(tsKey);
@@ -80,9 +76,7 @@ public class ClusterTest {
             System.out.println("Checking node "+n);
             try {
                 ChicagoClient cc = new ChicagoClient(n);
-                if(!val.equals(new String(cc.read(colFam.getBytes(), Ints.toByteArray(key)).get()))){
-                    throw new Exception("assertTSClient : Value does not match");
-                }
+                assertEquals(val,new String(cc.read(colFam.getBytes(), Ints.toByteArray(key)).get()));
             }catch (Exception e){
                 e.printStackTrace();
                 return;
@@ -98,10 +92,7 @@ public class ClusterTest {
             String key = "key"+i;
             String _v = "val" + i;
             byte[] val = _v.getBytes();
-            boolean res = testChicagoCluster.chicagoClient.write(key.getBytes(), val);
-            if(!res){
-                throw new Exception("Write failed.");
-            }
+            assertTrue(testChicagoCluster.chicagoClient.write(key.getBytes(), val));
         }
 
         //Assert all nodes have the data
@@ -110,10 +101,7 @@ public class ClusterTest {
         //Test overwriting of data
         String key = "key29";
         String val  = "value29";
-        boolean res = testChicagoCluster.chicagoClient.write(key.getBytes(), val.getBytes());
-        if(!res){
-            throw new Exception("Write failed.");
-        }
+        assertTrue(testChicagoCluster.chicagoClient.write(key.getBytes(), val.getBytes()));
         //Assert overwrite is successful
         assertCCdata(key,val);
         deleteColFam("chicago");
@@ -125,9 +113,7 @@ public class ClusterTest {
         nodes.forEach(n -> {
             ChicagoClient cc = testChicagoCluster.chicagoClientHashMap.get(forServer(n));
             try {
-                if(!val.equals(new String(cc.read(key.getBytes()).get()))){
-                    throw new Exception("assertCCClient : Value does not match");
-                }
+                assertEquals(val,new String(cc.read(key.getBytes()).get()));
             }catch (Exception e){
                 e.printStackTrace();
             }
@@ -141,7 +127,7 @@ public class ClusterTest {
         List<String> nodes = testChicagoCluster.chicagoTSClient.getNodeList(tsKey.getBytes());
         assert(true == !testChicagoCluster.zkClient.list("/chicago/node-list").isEmpty());
         //Write some data.
-        for (int i = 0; i < 200; i++) {
+        for (int i = 0; i < 2000; i++) {
             String _v = "val" + i;
             byte[] val = _v.getBytes();
             testChicagoCluster.chicagoTSClient.write(tsKey.getBytes(), val);
@@ -164,7 +150,7 @@ public class ClusterTest {
         while(repNodes.isEmpty()){
             repNodes = testChicagoCluster.zkClient.list(path);
         }
-        System.out.println("Lock path populated in "+ (System.currentTimeMillis() - startTime) + "ms");
+        System.out.println("Lock path populated in "+ (System.currentTimeMillis() - startTime) + "ms  repNode :" + repNodes.toString());
 
         assertTSClient(tsKey,90,"val90");
         repNodes = testChicagoCluster.zkClient.list(path);
@@ -247,17 +233,6 @@ public class ClusterTest {
         }
     }
 
- /*   public static void main(String[] args){
-       *//* ClusterTest ct = new ClusterTest();
-        try{
-            //ct.setup();
-            //ct.writeTSSequence();
-           // ct.writeCCSequence();
-            //ct.testReplication();
-        }catch (Exception e){
-            e.printStackTrace();
-        }
-        System.exit(0);*//*
-    }
-*/
+
+
 }
